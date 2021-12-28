@@ -3,6 +3,8 @@ FROM maven:3.6.3-jdk-8 AS build
 WORKDIR /usr/src/app
 COPY pom.xml .
 
+RUN --mount=type=cache,id=lemonade-serving,target=/root/.m2 mvn -f /usr/src/app/pom.xml dependency:go-offline
+
 COPY src ./src/
 RUN --mount=type=cache,id=lemonade-serving,target=/root/.m2 mvn -f /usr/src/app/pom.xml compile package
 
