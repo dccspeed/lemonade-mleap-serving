@@ -76,5 +76,12 @@ is configured to read configuration file and expand environment variables.
 ## Docker support
 A Docker image can be built using the provided Dockerfile. Change the `MLEAP_MODEL` 
 environment variable defined in the Dockerfile to the correct model.
+
+To build an image:
+```
+$ DOCKER_BUILDKIT=1  docker build . -t dccspeed/lemonade-mleap-serving:0.1.0
+```
+Notice: we are using [DOCKER_BUILDKIT](https://docs.docker.com/develop/develop-images/build_enhancements/) in order to speed-up the building.
+
 ## Bugs, suggestions and questions
 Please, open an issue.
