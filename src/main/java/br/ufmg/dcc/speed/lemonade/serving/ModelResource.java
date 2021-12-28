@@ -77,9 +77,9 @@ public class ModelResource {
     }
 
     @POST
-    @Path("/infer")
+    @Path("/transform")
     @Consumes(MediaType.APPLICATION_JSON)
-    public ResponseDto infer(@Context final HttpServletRequest request,
+    public ResponseDto transform(@Context final HttpServletRequest request,
             @NotNull @Valid TransformDto dto) {
 
         ResponseDto responseDto;
