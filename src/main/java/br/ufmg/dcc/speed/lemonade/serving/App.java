@@ -11,19 +11,18 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
-import ml.combust.mleap.runtime.MleapContext;
 import ml.combust.mleap.runtime.frame.Transformer;
 import ml.combust.mleap.runtime.javadsl.BundleBuilder;
 import ml.combust.mleap.runtime.javadsl.ContextBuilder;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
 
 /**
  * Dropwizard application.
@@ -87,6 +86,8 @@ public class App extends Application<AppConfig> {
         // Try to load MLeap model.
         Path tmpFile = Paths.get(
             System.getProperty("java.io.tmpdir"), "mleap", "bundle.zip");
+        
+        Files.createDirectories(tmpFile.getParent());
         String modelPath = tmpFile.toString();
 
         if (!Files.exists(tmpFile)) {
@@ -102,7 +103,7 @@ public class App extends Application<AppConfig> {
 
                 BufferedInputStream in = new BufferedInputStream(url.openStream());
                 FileOutputStream fileOutputStream = new FileOutputStream(tmpFile.toString());
-                byte dataBuffer[] = new byte[1024];
+                byte dataBuffer[] = new byte[4096];
                 int bytesRead;
                 while ((bytesRead = in.read(dataBuffer, 0, 1024)) != -1) {
                     fileOutputStream.write(dataBuffer, 0, bytesRead);
@@ -110,7 +111,6 @@ public class App extends Application<AppConfig> {
                 in.close();
                 fileOutputStream.close();
             } else if ("file".equals(url.getProtocol())) {
-                Files.createDirectories(tmpFile.getParent());
                 Files.copy(Paths.get(url.toURI()), tmpFile, StandardCopyOption.REPLACE_EXISTING);
             } else {
                 throw new IOException("Unsupported protocol: " + url.getProtocol());
