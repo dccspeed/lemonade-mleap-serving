@@ -1,6 +1,7 @@
 package br.ufmg.dcc.speed.lemonade.serving.dto;
 
 import java.util.List;
+import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 /**
@@ -9,10 +10,28 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class TransformDto {
     private SchemaDto schema;
     private List<List<Object>> rows;
+    private Set<String> selectedFields;
+    private boolean returnOnlyScalarFields;
 
     @JsonProperty
     public SchemaDto getSchema() {
         return schema;
+    }
+
+    public boolean isReturnOnlyScalarFields() {
+        return returnOnlyScalarFields;
+    }
+
+    public void setReturnOnlyScalarFields(boolean onlyScalarFields) {
+        this.returnOnlyScalarFields = onlyScalarFields;
+    }
+
+    public Set<String> getSelectedFields() {
+        return selectedFields;
+    }
+
+    public void setSelectedFields(Set<String> selectedFields) {
+        this.selectedFields = selectedFields;
     }
 
     @JsonProperty

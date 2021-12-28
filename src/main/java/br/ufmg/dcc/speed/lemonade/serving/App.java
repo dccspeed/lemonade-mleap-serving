@@ -1,6 +1,7 @@
 package br.ufmg.dcc.speed.lemonade.serving;
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -16,6 +17,11 @@ import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import ml.combust.mleap.runtime.MleapContext;
+import ml.combust.mleap.runtime.frame.Transformer;
+import ml.combust.mleap.runtime.javadsl.BundleBuilder;
+import ml.combust.mleap.runtime.javadsl.ContextBuilder;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 
@@ -50,14 +56,20 @@ public class App extends Application<AppConfig> {
 
         String status = "OK";
         String modelPath = null;
+        Transformer transformer = null;
 
         try {
             modelPath = loadMleapModel(configuration);
+            transformer = new BundleBuilder().load(
+                new File(modelPath),
+                new ContextBuilder().createMleapContext()
+            ).root();
+            
         } catch (Exception ex) {
             status = ex.getLocalizedMessage();
         }
         final ModelResource resource = new ModelResource(configuration,
-                modelPath, status);
+                transformer, modelPath, status);
         e.jersey().register(resource);
         e.healthChecks().register("AppHealthCheck", new AppHealthCheck(status));
     }
@@ -73,14 +85,14 @@ public class App extends Application<AppConfig> {
     private String loadMleapModel(AppConfig configuration) throws IOException,
             URISyntaxException {
         // Try to load MLeap model.
-        String modelPath = null;
-        Path tmpDir = Files.createTempDirectory("hdfs-bundle");
-        Path tmpFile = Paths.get(tmpDir.toString(), "bundle.zip");
+        Path tmpFile = Paths.get(
+            System.getProperty("java.io.tmpdir"), "mleap", "bundle.zip");
+        String modelPath = tmpFile.toString();
 
         if (!Files.exists(tmpFile)) {
-            FileSystem fs = FileSystem.get(new Configuration());
             URL url = new URL(configuration.getModel());
             if ("hdfs".equals(url.getProtocol())) {
+                FileSystem fs = FileSystem.get(new Configuration());
                 fs.copyToLocalFile(new org.apache.hadoop.fs.Path(
                         configuration.getModel()),
                         new org.apache.hadoop.fs.Path(tmpFile.toString()));
@@ -98,6 +110,7 @@ public class App extends Application<AppConfig> {
                 in.close();
                 fileOutputStream.close();
             } else if ("file".equals(url.getProtocol())) {
+                Files.createDirectories(tmpFile.getParent());
                 Files.copy(Paths.get(url.toURI()), tmpFile, StandardCopyOption.REPLACE_EXISTING);
             } else {
                 throw new IOException("Unsupported protocol: " + url.getProtocol());
