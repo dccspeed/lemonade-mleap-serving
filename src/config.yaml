@@ -1,0 +1,9 @@
+server:
+   applicationConnectors:
+    - type: http
+      port: ${DB_PORT:-8150}
+   adminConnectors:
+    - type: http
+      port: ${DB_PORT:-8152}
+
+model: hdfs://spark01.ctweb.inweb.org.br:9000/lemonade/samples/titanic.csv
