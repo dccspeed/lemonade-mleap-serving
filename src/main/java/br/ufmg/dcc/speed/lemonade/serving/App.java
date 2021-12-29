@@ -6,6 +6,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLStreamHandler;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -13,6 +15,8 @@ import java.nio.file.StandardCopyOption;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
@@ -28,6 +32,19 @@ import ml.combust.mleap.runtime.javadsl.ContextBuilder;
  * Dropwizard application.
  */
 public class App extends Application<AppConfig> {
+    static {
+        // Handle hdfs:// protocol
+        URL.setURLStreamHandlerFactory(protocol -> "hdfs".equals(protocol) 
+        ? new URLStreamHandler() {
+            protected URLConnection openConnection(URL url) throws IOException {
+                return new URLConnection(url) {
+                    public void connect() throws IOException {
+                    }
+                };
+            }
+        } : null);
+    }
+    private Logger logger = LoggerFactory.getLogger(getClass());
     public static void main(String[] args) throws Exception {
         new App().run(args);
     }
@@ -66,6 +83,7 @@ public class App extends Application<AppConfig> {
             
         } catch (Exception ex) {
             status = ex.getLocalizedMessage();
+            logger.error("Error in run()", ex);
         }
         final ModelResource resource = new ModelResource(configuration,
                 transformer, modelPath, status);
