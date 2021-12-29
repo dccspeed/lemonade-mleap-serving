@@ -4,6 +4,7 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -34,17 +35,19 @@ import ml.combust.mleap.runtime.javadsl.ContextBuilder;
 public class App extends Application<AppConfig> {
     static {
         // Handle hdfs:// protocol
-        URL.setURLStreamHandlerFactory(protocol -> "hdfs".equals(protocol) 
-        ? new URLStreamHandler() {
-            protected URLConnection openConnection(URL url) throws IOException {
-                return new URLConnection(url) {
-                    public void connect() throws IOException {
+        URL.setURLStreamHandlerFactory(protocol -> "hdfs".equals(protocol)
+                ? new URLStreamHandler() {
+                    protected URLConnection openConnection(URL url) throws IOException {
+                        return new URLConnection(url) {
+                            public void connect() throws IOException {
+                            }
+                        };
                     }
-                };
-            }
-        } : null);
+                }
+                : null);
     }
     private Logger logger = LoggerFactory.getLogger(getClass());
+
     public static void main(String[] args) throws Exception {
         new App().run(args);
     }
@@ -77,10 +80,9 @@ public class App extends Application<AppConfig> {
         try {
             modelPath = loadMleapModel(configuration);
             transformer = new BundleBuilder().load(
-                new File(modelPath),
-                new ContextBuilder().createMleapContext()
-            ).root();
-            
+                    new File(modelPath),
+                    new ContextBuilder().createMleapContext()).root();
+
         } catch (Exception ex) {
             status = ex.getLocalizedMessage();
             logger.error("Error in run()", ex);
@@ -103,18 +105,27 @@ public class App extends Application<AppConfig> {
             URISyntaxException {
         // Try to load MLeap model.
         Path tmpFile = Paths.get(
-            System.getProperty("java.io.tmpdir"), "mleap", "bundle.zip");
-        
+                System.getProperty("java.io.tmpdir"), "mleap", "bundle.zip");
+
         Files.createDirectories(tmpFile.getParent());
         String modelPath = tmpFile.toString();
 
         if (!Files.exists(tmpFile)) {
             URL url = new URL(configuration.getModel());
             if ("hdfs".equals(url.getProtocol())) {
-                FileSystem fs = FileSystem.get(new Configuration());
-                fs.copyToLocalFile(new org.apache.hadoop.fs.Path(
-                        configuration.getModel()),
-                        new org.apache.hadoop.fs.Path(tmpFile.toString()));
+                Configuration conf = new Configuration();
+                //conf.set("fs.defaultFS", "hdfs://" + url.getHost() + ":" 
+                //    + url.getPort());
+                conf.set("dfs.client.use.datanode.hostname", "true");
+                conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
+
+                URI hdfsServerUri = new URI(url.getProtocol() + "://" 
+                    + url.getHost() + ":" + url.getPort());
+                FileSystem fs = FileSystem.get(hdfsServerUri, conf);
+                fs.copyToLocalFile(false,
+                        new org.apache.hadoop.fs.Path(url.getPath()),
+                        new org.apache.hadoop.fs.Path(tmpFile.toString()),
+                        true);
 
             } else if ("http".equals(url.getProtocol()) ||
                     "https".equals(url.getProtocol())) {
